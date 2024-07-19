@@ -3,6 +3,7 @@ package services
 import (
 	"net/http"
 	"simple-api/models"
+	"simple-api/utils"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -21,14 +22,21 @@ type UserService interface {
 }
 
 func (s *userService) CreateUser(c *gin.Context) {
+	_, err := utils.CheckAdmin(c)
+
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
 	// Parse JSON
 	var json struct {
-		Username        string `json:"username"`
-		Password        string `json:"password"`
-		ConfirmPassword string `json:"confirmPassword"`
+		Username        string `json:"username" binding:"required"`
+		Password        string `json:"password" binding:"required"`
+		ConfirmPassword string `json:"confirmPassword" binding:"required"`
 		Avatar          string `json:"avatar"`
 		Login           string `json:"login"`
 		Email           string `json:"email"`
+		IsAdmin         bool   `json:"isAdmin"`
 	}
 
 	if c.Bind(&json) == nil {

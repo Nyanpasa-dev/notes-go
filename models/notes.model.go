@@ -13,6 +13,5 @@ type User struct {
 	Username string
 	Password string
 	Avatar   string
-	Login    string
-	Email    string
+	IsAdmin  bool
 }

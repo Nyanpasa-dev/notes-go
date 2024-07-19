@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -18,7 +17,6 @@ type Claims struct {
 
 func CheckAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Проверка заголовка Authorization
 		if c.GetHeader("Authorization") == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is required"})
 			c.Abort()
@@ -41,10 +39,6 @@ func CheckAuthMiddleware() gin.HandlerFunc {
 			c.Abort()
 		}
 
-		// Parse takes the token string and a function for looking up the key. The latter is especially
-		// useful if you use multiple keys for your application.  The standard is to use 'kid' in the
-		// head of the token to identify which key to use, but the parsed token (head and claims) is provided
-		// to the callback, providing flexibility.
 		token, err := jwt.ParseWithClaims(tokenString[1], &Claims{}, func(token *jwt.Token) (interface{}, error) {
 			return []byte("secret"), nil
 		})
@@ -52,11 +46,10 @@ func CheckAuthMiddleware() gin.HandlerFunc {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			c.Abort()
 		} else if claims, ok := token.Claims.(*Claims); ok {
-			fmt.Printf("claims: %+v", claims)
+			c.Set("user", claims)
 		} else {
 			log.Fatal("unknown claims type, cannot proceed")
 		}
-		fmt.Println(token)
 
 		c.Next()
 	}

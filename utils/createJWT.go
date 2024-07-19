@@ -6,17 +6,19 @@ import (
 	"github.com/golang-jwt/jwt"
 )
 
-type claims struct {
+type Claims struct {
 	ID       uint   `json:"id"`
 	Username string `json:"username"`
+	IsAdmin  bool   `json:"isAdmin"`
 	jwt.StandardClaims
 }
 
 func CreateJWT(user *models.User) (string, error) {
 
-	claims := &claims{
+	claims := &Claims{
 		ID:       user.ID,
 		Username: user.Username,
+		IsAdmin:  user.IsAdmin,
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
