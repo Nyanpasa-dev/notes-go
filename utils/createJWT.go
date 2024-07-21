@@ -28,3 +28,22 @@ func CreateJWT(user *models.User) (string, error) {
 
 	return tokenString, err
 }
+
+func ExtractUserFromToken(user *models.User, tokenString string) (Claims, error) {
+	claims := &Claims{}
+
+	_, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte("secret"), nil
+	})
+
+	if err != nil {
+		return *claims, err
+	}
+
+	user.ID = claims.ID
+	user.Username = claims.Username
+	user.IsAdmin = claims.IsAdmin
+
+	return *claims, nil
+
+}

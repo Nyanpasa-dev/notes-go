@@ -14,4 +14,5 @@ type User struct {
 	Password string
 	Avatar   string
 	IsAdmin  bool
+	IpAdress string
 }

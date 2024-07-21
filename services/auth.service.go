@@ -15,9 +15,12 @@ type authService struct {
 
 type AuthService interface {
 	Login(c *gin.Context)
+	RefreshToken(c *gin.Context)
 }
 
 func (s *authService) Login(c *gin.Context) {
+	clientIp := c.ClientIP()
+	
 	// Parse JSON
 	var json struct {
 		Username string `json:"username" binding:"required"`
@@ -42,6 +45,31 @@ func (s *authService) Login(c *gin.Context) {
 
 }
 
+func (s *authService) RefreshToken(c *gin.Context) {
+	clientIp := c.ClientIP()
+	refreshToken := c.GetHeader("Authorization")
+
+	if refreshToken == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Refresh token is required"})
+		return
+	}
+
+	userDataFromToken, err := utils.ExtractUserFromToken(&models.User{}, refreshToken)
+
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		return
+	}
+
+	user := models.User{ID: userDataFromToken.ID}
+
+	if err := s.db.First(&user).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		return
+	}
+
+
+}
 func NewAuthService(db *gorm.DB) AuthService {
 	return &authService{db}
 }
