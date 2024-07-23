@@ -20,7 +20,14 @@ type AuthService interface {
 
 func (s *authService) Login(c *gin.Context) {
 	clientIp := c.ClientIP()
-	
+
+	userAgent := c.GetHeader("User-Agent")
+
+	if userAgent == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User-Agent header is required"})
+		return
+	}
+
 	// Parse JSON
 	var json struct {
 		Username string `json:"username" binding:"required"`
@@ -35,6 +42,7 @@ func (s *authService) Login(c *gin.Context) {
 		}
 
 		jwtToken, err := utils.CreateJWT(&user)
+		refreshToken, err := utils.CreateRefreshToken(&user, clientIp)
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
@@ -54,22 +62,38 @@ func (s *authService) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	userDataFromToken, err := utils.ExtractUserFromToken(&models.User{}, refreshToken)
+	userData, err := utils.ExtractUserFromToken(refreshToken)
+
+	if userData.IpAdress != clientIp || userData.UserAgent != c.GetHeader("User-Agent") {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Why are you stealing tokens?"})
+		return
+	}
 
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 		return
 	}
 
-	user := models.User{ID: userDataFromToken.ID}
+	user := models.User{ID: userData.ID}
 
 	if err := s.db.First(&user).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
 		return
 	}
 
+	if userData.IpAdress != clientIp || userData.UserAgent != c.GetHeader("User-Agent") {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Why are you stealing tokens?"})
+		return
+	}
+
+	jwtToken, err := utils.CreateJWT(&user{
+		ID:       user.ID,
+		Username: user.Username,
+		IsAdmin:  user.IsAdmin,
+	})
 
 }
+
 func NewAuthService(db *gorm.DB) AuthService {
 	return &authService{db}
 }

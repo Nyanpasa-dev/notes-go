@@ -7,9 +7,11 @@ import (
 )
 
 type Claims struct {
-	ID       uint   `json:"id"`
-	Username string `json:"username"`
-	IsAdmin  bool   `json:"isAdmin"`
+	ID        uint   `json:"id"`
+	Username  string `json:"username"`
+	IsAdmin   bool   `json:"isAdmin"`
+	IpAdress  string `json:"ipAdress"`
+	UserAgent string `json:"userAgent"`
 	jwt.StandardClaims
 }
 
@@ -29,10 +31,10 @@ func CreateJWT(user *models.User) (string, error) {
 	return tokenString, err
 }
 
-func ExtractUserFromToken(user *models.User, tokenString string) (Claims, error) {
-	claims := &Claims{}
+func ExtractUserFromToken(tokenString string) (Claims, error) {
+	claims := Claims{}
 
-	_, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+	_, err := jwt.ParseWithClaims(tokenString, &claims, func(token *jwt.Token) (interface{}, error) {
 		return []byte("secret"), nil
 	})
 
@@ -40,9 +42,11 @@ func ExtractUserFromToken(user *models.User, tokenString string) (Claims, error)
 		return *claims, err
 	}
 
-	user.ID = claims.ID
-	user.Username = claims.Username
-	user.IsAdmin = claims.IsAdmin
+	claims.ID = claims.ID
+	claims.Username = claims.Username
+	claims.IsAdmin = claims.IsAdmin
+	claims.IpAdress = claims.IpAdress
+	claims.UserAgent = claims.UserAgent
 
 	return *claims, nil
 
