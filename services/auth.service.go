@@ -126,7 +126,7 @@ func (s *authService) RefreshToken(c *gin.Context) {
 	}
 
 	if _, err := refreshUtils.VerifyToken(refreshToken); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorazed"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Access error"})
 	}
 
 	jwtToken, err := utils.AccessParams{
