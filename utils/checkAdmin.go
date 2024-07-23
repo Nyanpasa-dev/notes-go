@@ -6,14 +6,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func CheckAdmin(c *gin.Context) (*Claims, error) {
+func CheckAdmin(c *gin.Context) (*AccessClaims, error) {
 	claims, exists := c.Get("user")
 
 	if !exists {
 		return nil, errors.New("user claim does not exist")
 	}
 
-	myClaims, ok := claims.(*Claims)
+	myClaims, ok := claims.(*AccessClaims)
 
 	if !ok {
 		return nil, errors.New("invalid user claim")

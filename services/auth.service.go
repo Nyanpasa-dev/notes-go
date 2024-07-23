@@ -18,80 +18,127 @@ type AuthService interface {
 	RefreshToken(c *gin.Context)
 }
 
-func (s *authService) Login(c *gin.Context) {
-	clientIp := c.ClientIP()
-
-	userAgent := c.GetHeader("User-Agent")
+func (s *authService) Login(ctx *gin.Context) {
+	hasher := utils.BcryptHasher{}
+	clientIp := ctx.ClientIP()
+	userAgent := ctx.GetHeader("User-Agent")
 
 	if userAgent == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "User-Agent header is required"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "User-Agent header is required"})
 		return
 	}
 
-	// Parse JSON
 	var json struct {
 		Username string `json:"username" binding:"required"`
 		Password string `json:"password" binding:"required"`
 	}
 
-	if c.Bind(&json) == nil {
-		user := models.User{Username: json.Username, Password: json.Password}
+	if ctx.Bind(&json) == nil {
+		user := &models.User{Username: json.Username}
 
-		if err := s.db.Select("username", "id").Where(&user).First(&user).Error; err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "неправильно нихуя"})
+		if err := s.db.Select("username", "id", "password").Where(user).First(user).Error; err != nil {
+			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
+			return
 		}
 
-		jwtToken, err := utils.CreateJWT(&user)
-		refreshToken, err := utils.CreateRefreshToken(&user, clientIp)
+		if hasher.ComparePassword(user.Password, json.Password) != nil {
+			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
+			return
+		}
+
+		refreshParams := utils.RefreshParams{
+			IpAddress: clientIp,
+			UserAgent: userAgent,
+			User:      user,
+		}
+
+		var refreshUtils = refreshParams
+		refreshToken, err := refreshUtils.CreateJWT()
 
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
-		} else {
-			c.JSON(http.StatusOK, gin.H{"token": jwtToken, "user": user})
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate refersh token"})
+			return
+		}
+
+		accessParams := utils.AccessParams{
+			User: user,
+		}
+
+		var accessUtils = accessParams
+		accessToken, err := accessUtils.CreateJWT()
+
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		}
+
+		if accessToken != "" && refreshToken != "" {
+			ctx.SetCookie(
+				"refresh_token", // cookie name
+				refreshToken,    // cookie value
+				3600*24*7,       // max age in seconds (1 week)
+				"/",             // path
+				"",              // domain (leave empty for default)
+				true,            // secure flag
+				true,            // HttpOnly flag
+			)
+
+			ctx.JSON(http.StatusOK, gin.H{"accessToken": accessToken, "user": user})
+
+			s.db.Model(user).Update("ip_address", clientIp)
+			s.db.Model(user).Update("user_agent", userAgent)
 		}
 	}
-
 }
 
 func (s *authService) RefreshToken(c *gin.Context) {
 	clientIp := c.ClientIP()
-	refreshToken := c.GetHeader("Authorization")
-
-	if refreshToken == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Refresh token is required"})
-		return
-	}
-
-	userData, err := utils.ExtractUserFromToken(refreshToken)
-
-	if userData.IpAdress != clientIp || userData.UserAgent != c.GetHeader("User-Agent") {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Why are you stealing tokens?"})
-		return
-	}
+	refreshToken, err := c.Cookie("refresh_token")
 
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Access error. Go fuck yourself"})
+	}
+
+	refreshParams := utils.RefreshParams{
+		IpAddress: clientIp,
+		UserAgent: c.GetHeader("User-Agent"),
+	}
+
+	var refreshUtils = refreshParams
+	userData, err := refreshUtils.ExtractUserFromToken(refreshToken)
+
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
 		return
 	}
 
-	user := models.User{ID: userData.ID}
+	refreshClaims := userData.(*utils.RefreshClaims)
 
-	if err := s.db.First(&user).Error; err != nil {
+	var user models.User
+
+	if err := s.db.First(&user, refreshClaims).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
 		return
 	}
 
-	if userData.IpAdress != clientIp || userData.UserAgent != c.GetHeader("User-Agent") {
+	if refreshClaims.IpAddress != clientIp || refreshClaims.UserAgent != c.GetHeader("User-Agent") {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Why are you stealing tokens?"})
 		return
 	}
 
-	jwtToken, err := utils.CreateJWT(&user{
-		ID:       user.ID,
-		Username: user.Username,
-		IsAdmin:  user.IsAdmin,
-	})
+	if _, err := refreshUtils.VerifyToken(refreshToken); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorazed"})
+	}
 
+	jwtToken, err := utils.AccessParams{
+		User: &user,
+	}.CreateJWT()
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"token": jwtToken})
 }
 
 func NewAuthService(db *gorm.DB) AuthService {

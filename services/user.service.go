@@ -22,20 +22,20 @@ type UserService interface {
 }
 
 func (s *userService) CreateUser(c *gin.Context) {
-	_, err := utils.CheckAdmin(c)
+	// _, err := utils.CheckAdmin(c)
+	var err error
+	hasher := utils.BcryptHasher{}
 
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-		return
-	}
+	// if err != nil {
+	// 	c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+	// 	return
+	// }
 	// Parse JSON
 	var json struct {
 		Username        string `json:"username" binding:"required"`
 		Password        string `json:"password" binding:"required"`
 		ConfirmPassword string `json:"confirmPassword" binding:"required"`
 		Avatar          string `json:"avatar"`
-		Login           string `json:"login"`
-		Email           string `json:"email"`
 		IsAdmin         bool   `json:"isAdmin"`
 	}
 
@@ -44,7 +44,16 @@ func (s *userService) CreateUser(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "Passwords do not match",
 			})
+			return
 		}
+
+		json.Password, err = hasher.HashPassword(json.Password)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+			return
+		}
+
 		// Create user
 		user := models.User{Username: json.Username, Password: json.Password, Avatar: json.Avatar}
 		s.db.Create(&user)

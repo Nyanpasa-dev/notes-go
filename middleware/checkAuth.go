@@ -1,19 +1,12 @@
 package middleware
 
 import (
-	"log"
 	"net/http"
+	"simple-api/utils"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt"
 )
-
-type Claims struct {
-	id       uint
-	username string
-	jwt.StandardClaims
-}
 
 func CheckAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -39,16 +32,14 @@ func CheckAuthMiddleware() gin.HandlerFunc {
 			c.Abort()
 		}
 
-		token, err := jwt.ParseWithClaims(tokenString[1], &Claims{}, func(token *jwt.Token) (interface{}, error) {
-			return []byte("secret"), nil
-		})
+		claims, err := utils.AccessParams{}.VerifyToken(tokenString[1])
+
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			c.Abort()
-		} else if claims, ok := token.Claims.(*Claims); ok {
-			c.Set("user", claims)
 		} else {
-			log.Fatal("unknown claims type, cannot proceed")
+			c.Set("user", claims)
+
 		}
 
 		c.Next()

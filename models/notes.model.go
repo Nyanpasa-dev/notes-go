@@ -10,10 +10,10 @@ type Note struct {
 
 type User struct {
 	gorm.Model
-	Username string
-	Password string
-	Avatar   string
-	IsAdmin  bool
-	IpAdress string
+	Username  string
+	Password  string
+	Avatar    string
+	IsAdmin   bool
+	IpAddress string
 	UserAgent string
 }
