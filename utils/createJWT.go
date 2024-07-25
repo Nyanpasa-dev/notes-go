@@ -153,9 +153,5 @@ func (r RefreshParams) VerifyToken(tokenString string) (*RefreshClaims, error) {
 		return nil, err
 	}
 
-	if claims.ID != r.User.ID {
-		return nil, err
-	}
-
 	return claims, nil
 }

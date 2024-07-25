@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"net/http"
 	"simple-api/models"
 	"simple-api/utils"
@@ -72,14 +73,23 @@ func (s *authService) Login(ctx *gin.Context) {
 		}
 
 		if accessToken != "" && refreshToken != "" {
+			ectryptedRefreshToken, err := utils.Encrypt(refreshToken)
+			fmt.Println("before crypt", refreshToken)
+			fmt.Println("after crypt", ectryptedRefreshToken)
+
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Internal error", "details": err})
+				return
+			}
+
 			ctx.SetCookie(
-				"refresh_token", // cookie name
-				refreshToken,    // cookie value
-				3600*24*7,       // max age in seconds (1 week)
-				"/",             // path
-				"",              // domain (leave empty for default)
-				true,            // secure flag
-				true,            // HttpOnly flag
+				"refresh_token",       // cookie name
+				ectryptedRefreshToken, // cookie value
+				3600*24*7,             // max age in seconds (1 week)
+				"/",                   // path
+				"",                    // domain (leave empty for default)
+				true,                  // secure flag
+				true,                  // HttpOnly flag
 			)
 
 			ctx.JSON(http.StatusOK, gin.H{"accessToken": accessToken, "user": user})
@@ -98,13 +108,22 @@ func (s *authService) RefreshToken(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Access error. Go fuck yourself"})
 	}
 
+	decryptedRefreshToken, err := utils.Decrypt(refreshToken)
+
+	fmt.Println("refresh", decryptedRefreshToken)
+
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Access error"})
+		return
+	}
+
 	refreshParams := utils.RefreshParams{
 		IpAddress: clientIp,
 		UserAgent: c.GetHeader("User-Agent"),
 	}
 
 	var refreshUtils = refreshParams
-	userData, err := refreshUtils.ExtractUserFromToken(refreshToken)
+	userData, err := refreshUtils.ExtractUserFromToken(decryptedRefreshToken)
 
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
@@ -115,7 +134,7 @@ func (s *authService) RefreshToken(c *gin.Context) {
 
 	var user models.User
 
-	if err := s.db.First(&user, refreshClaims).Error; err != nil {
+	if err := s.db.Where("id = ? AND ip_address = ? AND user_agent = ?", refreshClaims.ID, refreshClaims.IpAddress, refreshClaims.UserAgent).First(&user).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
 		return
 	}
@@ -125,7 +144,7 @@ func (s *authService) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	if _, err := refreshUtils.VerifyToken(refreshToken); err != nil {
+	if _, err := refreshUtils.VerifyToken(decryptedRefreshToken); err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Access error"})
 	}
 
