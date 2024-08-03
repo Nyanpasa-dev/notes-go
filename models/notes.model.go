@@ -7,13 +7,3 @@ type Note struct {
 	Title string `json:"title"`
 	Body  string `json:"body"`
 }
-
-type User struct {
-	gorm.Model
-	Username  string
-	Password  string
-	Avatar    string
-	IsAdmin   bool
-	IpAddress string
-	UserAgent string
-}
