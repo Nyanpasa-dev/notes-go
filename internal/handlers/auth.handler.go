@@ -9,11 +9,13 @@ import (
 )
 
 type AuthHandler struct {
-	db *gorm.DB
+	service services.AuthService
 }
 
 func NewAuthHandler(db *gorm.DB) *AuthHandler {
-	return &AuthHandler{db}
+	return &AuthHandler{
+		service: services.NewAuthService(db),
+	}
 }
 
 func (h *AuthHandler) Authenticate(ctx *gin.Context) {
@@ -27,9 +29,7 @@ func (h *AuthHandler) Authenticate(ctx *gin.Context) {
 		return
 	}
 
-	authService := services.NewAuthService(h.db)
-
-	user, err := authService.Authenticate(ctx)
+	user, err := h.service.Authenticate(ctx)
 
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
@@ -41,9 +41,8 @@ func (h *AuthHandler) Authenticate(ctx *gin.Context) {
 }
 
 func (h *AuthHandler) RefreshToken(ctx *gin.Context) {
-	authService := services.NewAuthService(h.db)
 
-	token, err := authService.RefreshToken(ctx)
+	token, err := h.service.RefreshToken(ctx)
 
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
