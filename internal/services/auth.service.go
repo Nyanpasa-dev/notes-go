@@ -3,7 +3,6 @@ package services
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	"simple-api/internal/repositories"
 	"simple-api/models"
 	"simple-api/utils"
@@ -17,7 +16,7 @@ type authService struct {
 }
 
 type AuthService interface {
-	Authenticate(ctx *gin.Context) (*models.User, error)
+	Authenticate(ctx *gin.Context) (*models.User, string, error)
 	RefreshToken(ctx *gin.Context) (string, error)
 }
 
@@ -25,13 +24,13 @@ func NewAuthService(db *gorm.DB) AuthService {
 	return &authService{db}
 }
 
-func (s *authService) Authenticate(ctx *gin.Context) (*models.User, error) {
+func (s *authService) Authenticate(ctx *gin.Context) (*models.User, string, error) {
 	hasher := utils.BcryptHasher{}
 	clientIp := ctx.ClientIP()
 	userAgent := ctx.GetHeader("User-Agent")
 
 	if userAgent == "" {
-		return nil, errors.New("User-Agent header is required")
+		return nil, "", errors.New("User-Agent header is required")
 	}
 
 	var json struct {
@@ -48,11 +47,11 @@ func (s *authService) Authenticate(ctx *gin.Context) (*models.User, error) {
 
 	user, err = userRepo.GetUserByUserName(newUser.Username)
 	if err != nil {
-		return nil, errors.New("user not found")
+		return nil, "", errors.New("user not found")
 	}
 
 	if hasher.ComparePassword(user.Password, json.Password) != nil {
-		return nil, errors.New("invalid password")
+		return nil, "", errors.New("invalid password")
 	}
 
 	refreshParams := utils.RefreshParams{
@@ -65,7 +64,7 @@ func (s *authService) Authenticate(ctx *gin.Context) (*models.User, error) {
 	refreshToken, err := refreshUtils.CreateJWT()
 
 	if err != nil {
-		return nil, errors.New("failed to generate token")
+		return nil, "", errors.New("failed to generate token")
 	}
 
 	accessParams := utils.AccessParams{
@@ -76,7 +75,7 @@ func (s *authService) Authenticate(ctx *gin.Context) (*models.User, error) {
 	accessToken, err := accessUtils.CreateJWT()
 
 	if err != nil {
-		return nil, errors.New("failed to generate token")
+		return nil, "", errors.New("failed to generate token")
 	}
 
 	ectryptedRefreshToken, err := utils.Encrypt(refreshToken)
@@ -84,7 +83,7 @@ func (s *authService) Authenticate(ctx *gin.Context) (*models.User, error) {
 	fmt.Println("after crypt", ectryptedRefreshToken)
 
 	if err != nil {
-		return nil, errors.New("failed to generate token")
+		return nil, "", errors.New("failed to generate token")
 	}
 
 	ctx.SetCookie(
@@ -97,12 +96,10 @@ func (s *authService) Authenticate(ctx *gin.Context) (*models.User, error) {
 		true,                  // HttpOnly flag
 	)
 
-	ctx.JSON(http.StatusOK, gin.H{"accessToken": accessToken, "user": user})
-
 	s.db.Model(user).Update("ip_address", clientIp)
 	s.db.Model(user).Update("user_agent", userAgent)
 
-	return user, nil
+	return user, accessToken, nil
 }
 
 func (s *authService) RefreshToken(c *gin.Context) (string, error) {

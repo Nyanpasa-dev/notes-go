@@ -29,14 +29,14 @@ func (h *AuthHandler) Authenticate(ctx *gin.Context) {
 		return
 	}
 
-	user, err := h.service.Authenticate(ctx)
+	user, token, err := h.service.Authenticate(ctx)
 
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"user": user})
+	ctx.JSON(http.StatusOK, gin.H{"user": user, "token": token})
 
 }
 
