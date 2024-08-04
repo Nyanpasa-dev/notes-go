@@ -9,11 +9,13 @@ import (
 )
 
 type UserHandler struct {
-	db *gorm.DB
+	userService services.UserService
 }
 
 func NewUserHandler(db *gorm.DB) *UserHandler {
-	return &UserHandler{db}
+	return &UserHandler{
+		userService: services.NewUserService(db),
+	}
 }
 
 func (h *UserHandler) CreateUser(ctx *gin.Context) {
@@ -30,9 +32,7 @@ func (h *UserHandler) CreateUser(ctx *gin.Context) {
 		return
 	}
 
-	userService := services.NewUserService(h.db)
-
-	err := userService.CreateUser(ctx)
+	err := h.userService.CreateUser(ctx)
 
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -43,18 +43,47 @@ func (h *UserHandler) CreateUser(ctx *gin.Context) {
 
 }
 
-func (h *UserHandler) GetUsers() {
+func (h *UserHandler) GetUsers(ctx *gin.Context) {
+	user, err := h.userService.GetUsers(ctx)
 
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"users": user})
 }
 
-func (h *UserHandler) GetUserById() {
+func (h *UserHandler) GetUserById(ctx *gin.Context) {
+	user, err := h.userService.GetUser(ctx)
 
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"user": user})
 }
 
-func (h *UserHandler) UpdateUser() {
+func (h *UserHandler) UpdateUser(ctx *gin.Context) {
 
+	err := h.userService.UpdateUser(ctx)
+
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "User updated successfully"})
 }
 
-func (h *UserHandler) DeleteUser() {
+func (h *UserHandler) DeleteUser(ctx *gin.Context) {
+	err := h.userService.DeleteUser(ctx)
 
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
 }
