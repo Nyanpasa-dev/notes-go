@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"simple-api/models"
 
 	"gorm.io/driver/postgres"
@@ -11,14 +12,22 @@ var db *gorm.DB
 
 func init() {
 	var err error
-	// Initialize the database
-	dsn := "host=localhost user=postgres password=root dbname=notes-go port=5432 sslmode=disable TimeZone=Asia/Shanghai"
+
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s",
+		AppConfig.Database.Host,
+		AppConfig.Database.User,
+		AppConfig.Database.Password,
+		AppConfig.Database.DBName,
+		AppConfig.Database.Port,
+		AppConfig.Database.SSLMode,
+		AppConfig.Database.TimeZone,
+	)
+
 	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
 
-	// Migrate the schema
 	db.AutoMigrate(&models.Note{}, &models.User{})
 
 }

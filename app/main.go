@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"simple-api/config"
 	"simple-api/internal/routes"
 	"simple-api/utils/middleware"
@@ -9,11 +10,14 @@ import (
 )
 
 func main() {
+	config.LoadConfig()
+
 	r := gin.Default()
 
 	db := config.GetDB()
 	r.Use(middleware.ErrorHandlingMiddleware())
 	routes.RegisterRoutes(r, db)
 
-	r.Run(":8080")
+	port := config.AppConfig.Application.Port
+	r.Run(fmt.Sprintf(":%d", port))
 }
