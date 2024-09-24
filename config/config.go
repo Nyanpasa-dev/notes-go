@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -32,7 +33,7 @@ type Config struct {
 var AppConfig Config
 
 func LoadConfig() {
-	data, err := os.ReadFile("config.yaml")
+	data, err := os.ReadFile("./config/config.yaml")
 	if err != nil {
 		log.Fatalf("Error reading config file: %v", err)
 	}
@@ -41,4 +42,6 @@ func LoadConfig() {
 	if err != nil {
 		log.Fatalf("Error unmarshalling config file: %v", err)
 	}
+
+	fmt.Println("Configuration loaded successfully")
 }

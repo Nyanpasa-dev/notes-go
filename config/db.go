@@ -2,15 +2,14 @@ package config
 
 import (
 	"fmt"
-	"simple-api/models"
-
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"simple-api/models"
 )
 
 var db *gorm.DB
 
-func init() {
+func RunDB() {
 	var err error
 
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s",
@@ -25,6 +24,7 @@ func init() {
 
 	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
+		fmt.Println(fmt.Errorf(err.Error()))
 		panic("failed to connect database")
 	}
 

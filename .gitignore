@@ -34,7 +34,7 @@ vendor/
 *.log
 
 # Configuration files
-config.yaml
+config/config.yaml
 config.json
 
 # Temporary files

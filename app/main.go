@@ -10,8 +10,6 @@ import (
 )
 
 func main() {
-	config.LoadConfig()
-
 	if recover() != nil {
 		fmt.Println("Error loading config")
 	}
@@ -28,4 +26,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func init() {
+	config.LoadConfig()
+	config.RunDB()
 }
