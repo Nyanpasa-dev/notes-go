@@ -51,7 +51,11 @@ func (s *userService) CreateUser(c *gin.Context) error {
 	}
 
 	user := models.User{Username: json.Username, Password: json.Password, Avatar: json.Avatar}
-	s.userRepo.Create(&user)
+	err = s.userRepo.Create(&user)
+	
+	if err != nil {
+		return err
+	}
 
 	return nil
 

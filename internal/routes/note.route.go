@@ -1,7 +1,7 @@
 package routes
 
 import (
-	services "simple-api/internal/services"
+	"simple-api/internal/handlers"
 	"simple-api/utils/middleware"
 
 	"github.com/gin-gonic/gin"
@@ -9,7 +9,7 @@ import (
 )
 
 func RegisterNoteRoutes(r *gin.Engine, db *gorm.DB) {
-	var notes = services.NewNoteService(db)
+	var notes = handlers.NoteHandler{}
 
 	r.Use(middleware.CheckAuthMiddleware())
 	r.POST("/notes", notes.CreateNote)
