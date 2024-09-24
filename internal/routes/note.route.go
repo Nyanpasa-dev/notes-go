@@ -9,7 +9,7 @@ import (
 )
 
 func RegisterNoteRoutes(r *gin.Engine, db *gorm.DB) {
-	var notes = handlers.NoteHandler{}
+	var notes = handlers.NewNoteHandler(db)
 
 	r.Use(middleware.CheckAuthMiddleware())
 	r.POST("/notes", notes.CreateNote)

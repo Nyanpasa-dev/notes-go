@@ -28,8 +28,10 @@ func init() {
 		panic("failed to connect database")
 	}
 
-	db.AutoMigrate(&models.Note{}, &models.User{})
-
+	err = db.AutoMigrate(&models.Note{}, &models.User{})
+	if err != nil {
+		panic("failed to migrate database")
+	}
 }
 func GetDB() *gorm.DB {
 	return db

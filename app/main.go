@@ -12,6 +12,10 @@ import (
 func main() {
 	config.LoadConfig()
 
+	if recover() != nil {
+		fmt.Println("Error loading config")
+	}
+
 	r := gin.Default()
 
 	db := config.GetDB()
@@ -19,5 +23,9 @@ func main() {
 	routes.RegisterRoutes(r, db)
 
 	port := config.AppConfig.Application.Port
-	r.Run(fmt.Sprintf(":%d", port))
+	err := r.Run(fmt.Sprintf(":%d", port))
+
+	if err != nil {
+		panic(err)
+	}
 }

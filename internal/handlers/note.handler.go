@@ -11,7 +11,7 @@ type NoteHandler struct {
 	service services.NoteService
 }
 
-func NewNoteService(db *gorm.DB) *NoteHandler {
+func NewNoteHandler(db *gorm.DB) *NoteHandler {
 	return &NoteHandler{
 		service: services.NewNoteService(db),
 	}
@@ -51,7 +51,7 @@ func (h *NoteHandler) GetNote(ctx *gin.Context) {
 
 func (h *NoteHandler) GetNotes(ctx *gin.Context) {
 	notes := h.service.GetNotes(ctx)
-	
+
 	ctx.JSON(http.StatusOK, notes)
 }
 
