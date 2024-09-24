@@ -1,14 +1,21 @@
-FROM ubuntu:latest
-LABEL authors="87476"
-
 FROM golang:1.23
-WORKDIR /usr/src/app
 
+WORKDIR /app
+
+# Копируем файлы go.mod и go.sum
 COPY go.mod go.sum ./
-RUN go mod downlaod && go mod verify
 
-COPY utils .
+# Загружаем зависимости
+RUN go mod download
 
-RUN go build -v -o /usr/src/app ./...
+# Копируем весь код из директории app и других папок
+COPY . .
 
-CMD ["app"]
+# Собираем приложение
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/docker-gs-ping ./app/main.go
+
+# Открываем порт 8000
+EXPOSE 8000
+
+# Запускаем приложение
+CMD ["/app/docker-gs-ping"]
